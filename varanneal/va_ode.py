@@ -15,9 +15,7 @@ VA was first proposed by Jack C. Quinn in his Ph.D. thesis (2010) [1], and is
 described by J. Ye et al. (2015) in detail in [2].
 
 This code uses automatic differentiation to evaluate derivatives of the
-action for optimization as implemented in ADOL-C, wrapped in Python code in a
-package called PYADOLC (installation required for usage of VarAnneal).
-PYADOLC is available at https://github.com/b45ch1/pyadolc.
+action for optimization as implemented in autograd.
 
 To run the annealing algorithm using this code, instantiate an Annealer object
 in your code using this module.  This object allows you to load in observation
@@ -33,12 +31,14 @@ References:
 [2] J. Ye et al., "Improved variational methods in statistical data assimilation."
     Nonlin. Proc. in Geophys., 22, 205-213 (2015).
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import numpy as np
-import adolc
+from autograd import grad
 import time
 import sys
-from _autodiffmin import ADmin
+from ._autodiffmin import ADmin
 
 class Annealer(ADmin):
     """
@@ -50,7 +50,6 @@ class Annealer(ADmin):
         """
         Constructor for the Annealer class.
         """
-        self.taped = False
         self.annealing_initialized = False
 
     def set_model(self, f, D):
@@ -63,8 +62,8 @@ class Annealer(ADmin):
         where x and stim are at the "current" time t.  Thus, x should be a
         D-dimensional vector, and stim similarly a D_stim-dimensional vector.
         """
-        self.f = f
-        self.D = D
+        self.f = f ## Dynamical model f(t, x, (p, stim))
+        self.D = D ## Dimension of the dynamical model
 
     def set_data_fromfile(self, data_file, stim_file=None, nstart=0, N=None):
         """
@@ -170,7 +169,7 @@ class Annealer(ADmin):
             if self.P.ndim == 1:
                 p = XP[self.N_model*self.D:]
             else:
-                if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+                if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                     p = np.reshape(XP[self.N_model*self.D:], (self.N_model - 1, self.NPest))
                 else:
                     p = np.reshape(XP[self.N_model*self.D:], (self.N_model, self.NPest))
@@ -180,7 +179,7 @@ class Annealer(ADmin):
             if self.P.ndim == 1:
                 p[self.Pidx] = XP[self.N_model*self.D:]
             else:
-                if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+                if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                     p[:, self.Pidx] = np.reshape(XP[self.N_model*self.D:],
                                                  (self.N_model-1, self.NPest))
                 else:
@@ -189,11 +188,11 @@ class Annealer(ADmin):
 
         # Start calculating the model error.
         # First compute time series of error terms.
-        if self.disc.im_func.__name__ == "disc_SimpsonHermite":
+        if self.disc.__func__.__name__ == "disc_SimpsonHermite":
             disc_vec1, disc_vec2 = self.disc(x, p)
             diff1 = x[2::2] - x[:-2:2] - disc_vec1
             diff2 = x[1::2] - disc_vec2
-        elif self.disc.im_func.__name__ == 'disc_forwardmap':
+        elif self.disc.__func__.__name__ == 'disc_forwardmap':
             diff = x[1:] - self.disc(x, p)
         else:
             diff = x[1:] - x[:-1] - self.disc(x, p)
@@ -201,7 +200,7 @@ class Annealer(ADmin):
         # Contract errors quadratically with RF.
         if type(self.RF) == np.ndarray:
             if self.RF.shape == (self.N_model - 1, self.D):
-                if self.disc.im_func.__name__ == "disc_SimpsonHermite":
+                if self.disc.__func__.__name__ == "disc_SimpsonHermite":
                     ferr1 = np.sum(self.RF[::2] * diff1 * diff1)
                     ferr2 = np.sum(self.RF[1::2] * diff2 * diff2)
                     ferr = ferr1 + ferr2
@@ -209,7 +208,7 @@ class Annealer(ADmin):
                     ferr = np.sum(self.RF * diff * diff)
 
             elif self.RF.shape == (self.N_model - 1, self.D, self.D):
-                if self.disc.im_func.__name__ == "disc_SimpsonHermite":
+                if self.disc.__func__.__name__ == "disc_SimpsonHermite":
                     ferr1 = 0.0
                     ferr2 = 0.0
                     for i in xrange((self.N_model - 1) / 2):
@@ -226,114 +225,12 @@ class Annealer(ADmin):
                 sys.exit(1)
 
         else:
-            if self.disc.im_func.__name__ == "disc_SimpsonHermite":
+            if self.disc.__func__.__name__ == "disc_SimpsonHermite":
                 ferr = self.RF * np.sum(diff1 * diff1 + diff2 * diff2)
             else:
                 ferr = self.RF * np.sum(diff * diff)
 
         return ferr / (self.D * (self.N_model - 1))
-
-    #def vecA_gaussian(self, XP):
-    #    """
-    #    Vector-like terms of the Gaussian action.
-    #    This is here primarily for Levenberg-Marquardt.
-    #    """
-    #    if self.NPest == 0:
-    #        x = np.reshape(XP, (self.N_model, self.D))
-    #        p = self.P
-    #    elif self.NPest == self.NP:
-    #        x = np.reshape(XP[:self.N_model*self.D], (self.N_model, self.D))
-    #        if self.P.ndim == 1:
-    #            p = XP[self.N_model*self.D:]
-    #        else:
-    #            p = np.reshape(XP[self.N_model*self.D:], (self.N_model, self.NPest))
-    #    else:
-    #        x = np.reshape(XP[:self.N_model*self.D], (self.N_model, self.D))
-    #        p = []
-    #        if self.P.ndim == 1:
-    #            j = self.NPest
-    #            for i in xrange(self.NP):
-    #                if i in self.Pidx:
-    #                    p.append(XP[-j])
-    #                    j -= 1
-    #                else:
-    #                    p.append(self.P[i])
-    #        else:
-    #            j = self.N_model * self.NPest
-    #            for n in xrange(self.N_model):
-    #                pn = []
-    #                for i in xrange(self.NP):
-    #                    if i in self.Pidx:
-    #                        pn.append(XP[-j])
-    #                        j -= 1
-    #                    else:
-    #                        pn.append(self.P[n, i])
-    #                p.append(pn)
-    #    p = np.array(p)
-    #
-    #    # Evaluate the vector-like terms of the action.
-    #    # Measurement error
-    #    diff = x[::self.merr_nskip, self.Lidx] - self.Y
-    #
-    #    if type(self.RM) == np.ndarray:
-    #        # Contract RM with error
-    #        if self.RM.shape == (self.N, self.L):
-    #            merr = self.RM * diff
-    #        elif self.RM.shape == (self.N, self.L, self.L):
-    #            merr = np.zeros_like(diff)
-    #            for i in xrange(self.N):
-    #                merr[i] = np.dot(self.RM[i], diff[i])
-    #        else:
-    #            print("ERROR: RM is in an invalid shape.")
-    #    else:
-    #        merr = self.RM * diff
-    #
-    #    # Model error
-    #    if self.disc.im_func.__name__ == "disc_SimpsonHermite":
-    #        #disc_vec = self.disc(x, p)
-    #        disc_vec1, disc_vec2 = self.disc(x, p)
-    #        diff1 = x[2::2] - x[:-2:2] - disc_vec1
-    #        diff2 = x[1::2] - disc_vec2
-    #    elif self.disc.im_func.__name__ == 'disc_forwardmap':
-    #        diff = x[1:] - self.disc(x, p)
-    #    else:
-    #        diff = x[1:] - x[:-1] - self.disc(x, p)
-    #
-    #    if type(self.RF) == np.ndarray:
-    #        # Contract RF with the model error time series terms
-    #        if self.RF.shape == (self.N - 1, self.D):
-    #            if self.disc.im_func.__name__ == "disc_SimpsonHermite":
-    #                ferr1 = self.RF[::2] * diff1
-    #                ferr2 = self.RF[1::2] * diff2
-    #                ferr = np.append(ferr1, ferr2)
-    #            else:
-    #                ferr = self.RF * diff
-    #
-    #        elif self.RF.shape == (self.N - 1, self.D, self.D):
-    #            if self.disc.im_func.__name__ == "disc_SimpsonHermite":
-    #                ferr1 = np.zeros_like(diff1)
-    #                ferr2 = np.zeros_like(diff2)
-    #                for i in xrange((self.N - 1) / 2):
-    #                    ferr1[i] = self.RF[2*i] * diff1[i]
-    #                    ferr2[i] = self.RF[2*i + 1] * diff2[i]
-    #                ferr = np.append(ferr1, ferr2)
-    #            else:
-    #                ferr = np.zeros_like(diff)
-    #                for i in xrange(self.N - 1):
-    #                    ferr[i] = np.dot(self.RF[i], diff)
-    #
-    #        else:
-    #            print("ERROR: RF is in an invalid shape.")
-    #
-    #    else:
-    #        if self.disc.im_func.__name__ == "disc_SimpsonHermite":
-    #            ferr1 = self.RF * diff1
-    #            ferr2 = self.RF * diff2
-    #            ferr = np.append(ferr1, ferr2)
-    #        else:
-    #            ferr = self.RF * diff
-    #
-    #    return np.append(merr/(self.N * self.L), ferr/((self.N - 1) * self.D))
 
     ############################################################################
     # Discretization routines
@@ -458,7 +355,7 @@ class Annealer(ADmin):
     ############################################################################
     def anneal(self, X0, P0, alpha, beta_array, RM, RF0, Lidx, Pidx, dt_model=None,
                init_to_data=True, action='A_gaussian', disc='trapezoid', 
-               method='L-BFGS-B', bounds=None, opt_args=None, adolcID=0,
+               method='L-BFGS-B', bounds=None, opt_args=None,
                track_paths=None, track_params=None, track_action_errors=None):
         """
         Convenience function to carry out a full annealing run over all values
@@ -468,7 +365,7 @@ class Annealer(ADmin):
         if self.annealing_initialized == False:
             self.anneal_init(X0, P0, alpha, beta_array, RM, RF0, Lidx, Pidx, dt_model,
                              init_to_data, action, disc, method, bounds,
-                             opt_args, adolcID)
+                             opt_args)
 
         # Loop through all beta values for annealing.
         for i in beta_array:
@@ -530,7 +427,7 @@ class Annealer(ADmin):
 
     def anneal_init(self, X0, P0, alpha, beta_array, RM, RF0, Lidx, Pidx, dt_model=None,
                     init_to_data=True, action='A_gaussian', disc='trapezoid',
-                    method='L-BFGS-B', bounds=None, opt_args=None, adolcID=0):
+                    method='L-BFGS-B', bounds=None, opt_args=None):
         """
         Initialize the annealing procedure.
         """
@@ -594,7 +491,7 @@ class Annealer(ADmin):
                     self.bounds.append(param_b[i])
             else:
                 # parameters are time-dependent
-                if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+                if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                     nmax = N_model - 1
                 else:
                     nmax = N_model
@@ -654,19 +551,21 @@ class Annealer(ADmin):
         #    # Levenberg-Marquardt requires a "vector action"
         #    self.A = self.vecA_gaussian
         if type(action) == str:
-            exec 'self.A = self.%s'%(action)
+            exec('self.A = self.%s'%(action))
         else:
             # Assumption: user has passed a function pointer
+            ## Set the 'action' aka function to be minimized as A and its gradient too.
             self.A = action
+            self.gradient = grad(self.A)
 
         # set the discretization
-        exec 'self.disc = self.disc_%s'%(disc,)
+        exec('self.disc = self.disc_%s'%(disc,))
 
         # array to store minimizing paths
         if P0.ndim == 1:
             self.minpaths = np.zeros((self.Nbeta, self.N_model*self.D + self.NP), dtype=np.float64)
         else:
-            if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+            if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                 nmax_p = self.N_model - 1
             else:
                 nmax_p = self.N_model
@@ -698,9 +597,6 @@ class Annealer(ADmin):
         self.fe_array = np.zeros(self.Nbeta, dtype=np.float64)
         self.exitflags = np.empty(self.Nbeta, dtype=np.int8)
 
-        # set the adolcID
-        self.adolcID = adolcID
-
         # Initialization successful, we're at the beta = beta_0 step now.
         self.initalized = True
 
@@ -731,17 +627,31 @@ class Annealer(ADmin):
                     P0 = self.minpaths[self.betaidx-1][self.N_model*self.D:][self.Pidx]
                     XP0 = np.append(X0, P0)
 
+            print("Beginning optimization...")
+            tstart = time.time()
+
             if self.method == 'L-BFGS-B':
-                XPmin, Amin, exitflag = self.min_lbfgs_scipy(XP0, self.gen_xtrace())
+                res = opt.minimize((self.A, self.gradient), XP0, method='L-BFGS-B', jac=True,
+                               options=self.opt_args, bounds=self.bounds)
             elif self.method == 'NCG':
-                XPmin, Amin, exitflag = self.min_cg_scipy(XP0, self.gen_xtrace())
+                res = opt.minimize((self.A, self.gradient), XP0, method='CG', jac=True,
+                                   options=self.opt_args, bounds=self.bounds)
             elif self.method == 'TNC':
-                XPmin, Amin, exitflag = self.min_tnc_scipy(XP0, self.gen_xtrace())
+                res = opt.minimize((self.A, self.gradient), XP0, method='TNC', jac=True,
+                                   options=self.opt_args, bounds=self.bounds)
             #elif self.method == 'LM':
             #    XPmin, Amin, exitflag = self.min_lm_scipy(XP0)
             else:
                 print("You really shouldn't be here.  Exiting.")
                 sys.exit(1)
+            XPmin, exitflag, Amin = res.x, res.status, res.fun  ## Res.fun is function value at xmin
+            print("Optimization complete!")
+            print("Time = {0} s".format(time.time() - tstart))
+            print("Exit flag = {0}".format(exitflag))
+            print("Exit message: {0}".format(res.message))
+            print("Iterations = {0}".format(res.nit))
+            print("Obj. function value = {0}\n".format(Amin))
+
         else:
             print("ERROR: Optimization routine not implemented or recognized.")
             sys.exit(1)
@@ -749,25 +659,18 @@ class Annealer(ADmin):
         # update optimal parameter values
         if self.NPest > 0:
             if self.P.ndim == 1:
-                if isinstance(XPmin[0], adolc._adolc.adouble):
-                    self.P[self.Pidx] = np.array([XPmin[-self.NPest + i].val \
-                                                  for i in xrange(self.NPest)])
-                else:
-                    self.P[self.Pidx] = np.copy(XPmin[-self.NPest:])
+                ## NOTE - removed adolc if statement here
+                self.P[self.Pidx] = np.copy(XPmin[-self.NPest:])
             else:
-                if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+                if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                     nmax = self.N_model - 1
                 else:
                     nmax = self.N_model
                 for n in xrange(nmax):
-                    if isinstance(XPmin[0], adolc._adolc.adouble):
-                        nidx = nmax - n - 1
-                        self.P[n, self.Pidx] = np.array([XPmin[-nidx*self.NPest + i].val \
-                                                         for i in xrange(self.NPest)])
-                    else:
-                        pi1 = nmax*self.D + n*self.NPest
-                        pi2 = nmax*self.D + (n+1)*self.NPest
-                        self.P[n, self.Pidx] = np.copy(XPmin[pi1:pi2])
+                    ## NOTE - removed adolc if statement here
+                    pi1 = nmax*self.D + n*self.NPest
+                    pi2 = nmax*self.D + (n+1)*self.NPest
+                    self.P[n, self.Pidx] = np.copy(XPmin[pi1:pi2])
 
         # store A_min and the minimizing path
         self.A_array[self.betaidx] = Amin
@@ -781,9 +684,7 @@ class Annealer(ADmin):
             self.beta = self.beta_array[self.betaidx]
             self.RF = self.RF0 * self.alpha**self.beta
 
-        # set flags indicating that A needs to be retaped, and that we're no
-        # longer at the beginning of the annealing procedure
-        self.taped = False
+        # set flags indicating that we're no longer at the beginning of the annealing procedure
         if self.annealing_initialized:
             # Indicate no longer at beta_0
             self.initialized = False
@@ -820,7 +721,7 @@ class Annealer(ADmin):
         if self.P.ndim == 1:
             savearray = np.resize(self.P, (self.Nbeta, self.NP))
         else:
-            if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+            if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                 savearray = np.resize(self.P, (self.Nbeta, self.N_model - 1, self.NP))
             else:
                 savearray = np.resize(self.P, (self.Nbeta, self.N_model, self.NP))
@@ -830,7 +731,7 @@ class Annealer(ADmin):
                 est_param_array = self.minpaths[:, self.N_model*self.D:]
                 savearray[:, self.Pidx] = est_param_array
             else:
-                if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
+                if self.disc.__func__.__name__ in ["disc_euler", "disc_forwardmap"]:
                     est_param_array = np.reshape(self.minpaths[:, self.N_model*self.D:],
                                                  (self.Nbeta, self.N_model - 1, self.NPest))
                     savearray[:, :, self.Pidx] = est_param_array
@@ -879,7 +780,7 @@ class Annealer(ADmin):
         if savedir.endswith('/') == False:
             savedir += '/'
         if savefile is None:
-            savefile = savedir + 'D%d_M%d_PATH%d.dat'%(self.D, self.L, self.adolcID)
+            savefile = savedir + 'D%d_M%d_PATH%d.dat'%(self.D, self.L)
         else:
             savefile = savedir + savefile
         betaR = self.beta_array.reshape((self.Nbeta,1))
@@ -887,19 +788,3 @@ class Annealer(ADmin):
         AR = self.A_array.reshape((self.Nbeta,1))
         savearray = np.hstack((betaR, exitR, AR, self.minpaths))
         np.savetxt(savefile, savearray)
-
-    ############################################################################
-    # AD taping & derivatives
-    ############################################################################
-    def gen_xtrace(self):
-        """
-        Define a random state vector for the AD trace.
-        """
-        if self.P.ndim == 1:
-            xtrace = np.random.rand(self.N_model*self.D + self.NPest)
-        else:
-            if self.disc.im_func.__name__ in ["disc_euler", "disc_forwardmap"]:
-                xtrace = np.random.rand(self.N_model*self.D + (self.N_model-1)*self.NPest)
-            else:
-                xtrace = np.random.rand(self.N_model*(self.D + self.NPest))
-        return xtrace

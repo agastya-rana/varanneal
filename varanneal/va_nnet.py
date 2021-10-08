@@ -34,12 +34,14 @@ References:
 [2] J. Ye et al., "Improved variational methods in statistical data assimilation."
     Nonlin. Proc. in Geophys., 22, 205-213 (2015).
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import numpy as np
 import adolc
 import time
 #import scipy.optimize as opt
-from _autodiffmin import ADmin
+from ._autodiffmin import ADmin
 
 class Annealer(ADmin):
     """
@@ -408,13 +410,13 @@ class Annealer(ADmin):
             # Levenberg-Marquardt requires a "vector action"
             self.A = self.vecA_gaussian
         elif type(action) == str:
-            exec 'self.A = self.%s'%(action)
+            exec('self.A = self.%s'%(action))
         else:
             # Assumption: user has passed a function pointer
             self.A = action
 
         # set the discretization
-        exec 'self.disc = self.disc_%s'%(disc,)
+        exec('self.disc = self.disc_%s'%(disc,))
 
         # array to store minimizing paths
         self.minpaths = np.zeros((self.Nbeta, self.NDens + self.NP), dtype=np.float64)
