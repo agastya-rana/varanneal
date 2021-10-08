@@ -40,10 +40,8 @@ from __future__ import absolute_import
 import numpy as np
 import adolc
 import time
-#import scipy.optimize as opt
-from ._autodiffmin import ADmin
 
-class Annealer(ADmin):
+class Annealer(object):
     """
     Annealer is the main object type for performing variational data
     assimilation using VA.  It inherits the function minimization routines
@@ -482,16 +480,27 @@ class Annealer(ADmin):
                     XP0 = np.append(X0, P0)
 
             if self.method == 'L-BFGS-B':
-                XPmin, Amin, exitflag = self.min_lbfgs_scipy(XP0, self.gen_xtrace())
+                res = opt.minimize(self.A, XP0, method='L-BFGS-B', jac=self.gradient,
+                                   options=self.opt_args, bounds=self.bounds)
             elif self.method == 'NCG':
-                XPmin, Amin, exitflag = self.min_cg_scipy(XP0, self.gen_xtrace())
+                res = opt.minimize(self.A, XP0, method='CG', jac=self.gradient,
+                                   options=self.opt_args, bounds=self.bounds)
             elif self.method == 'TNC':
-                XPmin, Amin, exitflag = self.min_tnc_scipy(XP0, self.gen_xtrace())
-            #elif self.method == 'LM':
+                res = opt.minimize(self.A, XP0, method='TNC', jac=self.gradient,
+                                   options=self.opt_args, bounds=self.bounds)
+            # elif self.method == 'LM':
             #    XPmin, Amin, exitflag = self.min_lm_scipy(XP0)
             else:
                 print("You really shouldn't be here.  Exiting.")
                 sys.exit(1)
+            XPmin, exitflag, Amin = res.x, res.status, res.fun  ## Res.fun is function value at xmin
+            print("Optimization complete!")
+            print("Time = {0} s".format(time.time() - tstart))
+            print("Exit flag = {0}".format(exitflag))
+            print("Exit message: {0}".format(res.message))
+            print("Iterations = {0}".format(res.nit))
+            print("Obj. function value = {0}\n".format(Amin))
+
         else:
             print("ERROR: Optimization routine not implemented or recognized.")
             sys.exit(1)

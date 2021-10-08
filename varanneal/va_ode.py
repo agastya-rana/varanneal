@@ -38,10 +38,9 @@ import autograd.numpy as np
 from autograd import grad
 import time
 import sys
-from ._autodiffmin import ADmin
 import scipy.optimize as opt
 
-class Annealer(ADmin):
+class Annealer(object):
     """
     Annealer is the main object type for performing variational data
     assimilation using VA.  It inherits the function minimization routines
