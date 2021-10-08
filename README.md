@@ -1,64 +1,25 @@
 # VarAnneal
-VarAnneal is a Python module that uses the variational annealing (VA) algorithm first proposed by J.C. Quinn<sup>[1]</sup>
-and described in detail in Ye et. al.<sup>[2]</sup> to 
-perform state and parameter estimation in partially observed dynamical systems.  This method requires optimization 
+This version of VarAnneal was adapted from Paul Rozdeba's [original VarAnneal code](https://github.com/paulrozdeba/varanneal),
+which is written in Python 3, and uses [```autograd```](https://github.com/HIPS/autograd) for automatic differentiation of the cost function. 
+Variational annealing performs state and parameter estimation in partially observed dynamical systems.  This method requires optimization 
 of a cost function called the "action" that balances measurement error (deviations of state estimates from observations) 
 and model error (deviations of trajectories from the assumed dynamical behavior given a state and parameter estimate). 
-Derivatives of the cost function are computed using automatic differentiation (AD) as implemented in 
-[PYADOLC](https://github.com/b45ch1/pyadolc), a Python wrapper around [ADOL-C](https://projects.coin-or.org/ADOL-C).  
 
-### Get VarAnneal
-VarAnneal is under constant development.  When you clone this repository, the master branch is the most up-to-date with the most bug fixes, new features, and (hopefully) the fewest bugs; while tags represent previous versions of the code.  You can clone VarAnneal to your computer with the command
+### Get This Version of VarAnneal
+You can clone this version of VarAnneal by running
 ```bash
-$ git clone https://github.com/paulrozdeba/varanneal
+$ git clone https://github.com/agastya-rana/varanneal
 ```
-which, when you open the directory, will automatically have the master branch checked out.  You can check out other tags by entering this directory and executing
-```bash
-$ git pull
-$ git fetch --tags
-$ git checkout tags/<tagname>
-```
-where the various tags can be found with `git tags --list`, or in "Branch" dropdown menu near the top of this page.
 
 ### Install
 VarAnneal requires you have the following software installed on your computer:
-1. Python 2 (tested on 2.7.9, probably will work on anything ≥ 2.7).
-2. NumPy (tested on ≥ 1.12.0).
-3. SciPy (tested on ≥ 0.18.1).
-4. [PYADOLC](https://github.com/b45ch1/pyadolc)  
-
-You should follow the installation instructions for PYADOLC in the readme page linked to above.
-If you're running any Linux 
-distribution you should be able to follow the Ubuntu installation instructions with some minor 
-modifications (mostly finding the right packages in your distribution's repository, which may have 
-slightly different names from the Ubuntu repo).
-
-**Caveat:** Building PYADOLC currently fails with boost 1.65.1.  Currently (as of 10/23/17), the newest version 
-of boost available for Ubuntu 17.10 (Artful Aardvark) is 1.62.0.1, so Ubuntu users should not have this 
-problem.  If you are running some other distribution with more up-to-date libraries, like Fedora or 
-Arch Linux, make sure to hold back boost to 1.64.0 at the latest while this issue is resolved.  
-If you are installing in Mac OS with homebrew, you should similarly hold back boost to 
-an older version.  Use these commands to install boost 1.59, and to get your system to properly link to them:
-```bash
-$ brew install boost@1.59
-$ brew install boost-python@1.59
-$ brew link boost@1.59 --force
-$ brew link boost-python@1.59 --force
-```
-
-Once you have this all installed, clone this git repo somewhere on your computer; I usually like putting 
-cloned repos in `~/.local/src`.  There is a setup.py file in the repo so, if you use Anaconda for example, 
-then follow the usual procedure for installation.  If you don't, you can easily install the package with 
-setuptools (comes automatically with [pip](https://pip.pypa.io/en/stable/installing/)). Install it locally 
-with the following steps:
-```bash
-python2 setup.py build
-python2 setup.py install --user
-```
-and now you should be able to import varanneal from anywhere (repeat this procedure for additional users 
-on the same machine).  Note: I plan to get VarAnneal up on PyPI eventually...
+1. Python 3 (tested on 3.8.11).
+2. Autograd (available via pip, tested on 1.3)  
+3. SciPy (tested on 1.7.1)
 
 ### Usage
+Taken from original VarAnneal algorithm:
+
 (This example loosely follows the code found in the examples folder in this repository, for the case of 
 state and parameter estimation in an ODE dynamical system. Check out the neural network examples too to 
 see how that works; eventually I'll update this README with instructions for neural networks too).
@@ -151,12 +112,11 @@ thesis in physics, UC San Diego, https://escholarship.org/uc/item/obm253qk (2010
 [2] J. Ye, N. Kadakia, P. Rozdeba, H.D.I. Abarbanel, and J.C. Quinn.  *Improved  variational methods in 
 statistical data assimilation.*  Nonlin. Proc. Geophys. **22**, 205-213 (2015).
 
-### Author
-Paul Rozdeba  
-May 23, 2017
+### Contributors
+Agastya Rana
+
+October 10, 2021
 
 ### Contributors
-Thanks to Nirag Kadakia and Uriel I. Morone for their contributions to this project.
-
-### License
-This project is licensed under the MIT license.  See LICENSE for more details.
+Agastya Rana migrated Paul Rozdeba's original code from Python 2 to Python 3, with a different
+automatic differentiation dependency.
