@@ -34,11 +34,12 @@ References:
 from __future__ import print_function
 from __future__ import absolute_import
 
-import numpy as np
+import autograd.numpy as np
 from autograd import grad
 import time
 import sys
 from ._autodiffmin import ADmin
+import scipy.optimize as opt
 
 class Annealer(ADmin):
     """
@@ -147,7 +148,7 @@ class Annealer(ADmin):
                 merr = np.sum(self.RM * diff * diff)
             elif self.RM.shape == (self.N_data, self.L, self.L):
                 merr = 0.0
-                for i in xrange(self.N_data):
+                for i in range(self.N_data):
                     merr = merr + np.dot(diff[i], np.dot(self.RM[i], diff[i]))
             else:
                 print("ERROR: RM is in an invalid shape.")
@@ -211,13 +212,13 @@ class Annealer(ADmin):
                 if self.disc.__func__.__name__ == "disc_SimpsonHermite":
                     ferr1 = 0.0
                     ferr2 = 0.0
-                    for i in xrange((self.N_model - 1) / 2):
+                    for i in range((self.N_model - 1) / 2):
                         ferr1 = ferr1 + np.dot(diff1[i], np.dot(self.RF[2*i], diff1[i]))
                         ferr2 = ferr2 + np.dot(diff2[i], np.dot(self.RF[2*i+1], diff2[i]))
                     ferr = ferr1 + ferr2
                 else:
                     ferr = 0.0
-                    for i in xrange(self.N_model - 1):
+                    for i in range(self.N_model - 1):
                         ferr = ferr + np.dot(diff[i], np.dot(self.RF[i], diff))
 
             else:
@@ -273,7 +274,7 @@ class Annealer(ADmin):
 
         fn = self.f(self.t_model[:-1], x[:-1], pn)
         fnp1 = self.f(self.t_model[1:], x[1:], pnp1)
-
+        ## WHY IS THIS THROWING AN ERROR NOW - CHECK VARANNEAL ON PYTHON 2
         return self.dt_model * (fn + fnp1) / 2.0
 
     #Don't use RK4 yet, still trying to decide how to implement with a stimulus.
@@ -481,13 +482,13 @@ class Annealer(ADmin):
             state_b = bounds[:self.D]
             param_b = bounds[self.D:]
             # set bounds on states for all N time points
-            for n in xrange(self.N_model):
-                for i in xrange(self.D):
+            for n in range(self.N_model):
+                for i in range(self.D):
                     self.bounds.append(state_b[i])
             # set bounds on parameters
             if self.P.ndim == 1:
                 # parameters are static
-                for i in xrange(self.NPest):
+                for i in range(self.NPest):
                     self.bounds.append(param_b[i])
             else:
                 # parameters are time-dependent
@@ -495,8 +496,8 @@ class Annealer(ADmin):
                     nmax = N_model - 1
                 else:
                     nmax = N_model
-                for n in xrange(self.nmax):
-                    for i in xrange(self.NPest):
+                for n in range(self.nmax):
+                    for i in range(self.NPest):
                         self.bounds.append(param_b[i])
         else:
             self.bounds = None
@@ -556,7 +557,7 @@ class Annealer(ADmin):
             # Assumption: user has passed a function pointer
             ## Set the 'action' aka function to be minimized as A and its gradient too.
             self.A = action
-            self.gradient = grad(self.A)
+        self.gradient = grad(self.A)
 
         # set the discretization
         exec('self.disc = self.disc_%s'%(disc,))
@@ -631,13 +632,13 @@ class Annealer(ADmin):
             tstart = time.time()
 
             if self.method == 'L-BFGS-B':
-                res = opt.minimize((self.A, self.gradient), XP0, method='L-BFGS-B', jac=True,
+                res = opt.minimize(self.A, XP0, method='L-BFGS-B', jac=self.gradient,
                                options=self.opt_args, bounds=self.bounds)
             elif self.method == 'NCG':
-                res = opt.minimize((self.A, self.gradient), XP0, method='CG', jac=True,
+                res = opt.minimize(self.A, XP0, method='CG', jac=self.gradient,
                                    options=self.opt_args, bounds=self.bounds)
             elif self.method == 'TNC':
-                res = opt.minimize((self.A, self.gradient), XP0, method='TNC', jac=True,
+                res = opt.minimize(self.A, XP0, method='TNC', jac=self.gradient,
                                    options=self.opt_args, bounds=self.bounds)
             #elif self.method == 'LM':
             #    XPmin, Amin, exitflag = self.min_lm_scipy(XP0)
@@ -666,7 +667,7 @@ class Annealer(ADmin):
                     nmax = self.N_model - 1
                 else:
                     nmax = self.N_model
-                for n in xrange(nmax):
+                for n in range(nmax):
                     ## NOTE - removed adolc if statement here
                     pi1 = nmax*self.D + n*self.NPest
                     pi2 = nmax*self.D + (n+1)*self.NPest
