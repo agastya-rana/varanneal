@@ -1,6 +1,6 @@
 # VarAnneal
 This version of VarAnneal was adapted from Paul Rozdeba's [original VarAnneal code](https://github.com/paulrozdeba/varanneal),
-which is written in Python 3, and uses [```autograd```](https://github.com/HIPS/autograd) for automatic differentiation of the cost function. 
+and is rewritten Python 3, using [```autograd```](https://github.com/HIPS/autograd) for automatic differentiation of the cost function. 
 Variational annealing performs state and parameter estimation in partially observed dynamical systems.  This method requires optimization 
 of a cost function called the "action" that balances measurement error (deviations of state estimates from observations) 
 and model error (deviations of trajectories from the assumed dynamical behavior given a state and parameter estimate). 
