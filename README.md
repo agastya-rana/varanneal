@@ -113,10 +113,5 @@ thesis in physics, UC San Diego, https://escholarship.org/uc/item/obm253qk (2010
 statistical data assimilation.*  Nonlin. Proc. Geophys. **22**, 205-213 (2015).
 
 ### Contributors
-Agastya Rana
-
-October 10, 2021
-
-### Contributors
 Agastya Rana migrated Paul Rozdeba's original code from Python 2 to Python 3, with a different
 automatic differentiation dependency.
