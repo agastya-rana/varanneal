@@ -745,6 +745,8 @@ class Annealer(object):
         else:
             np.savetxt(filename, savearray, fmt=fmt)
 
+        return savearray[-1]
+
     def save_action_errors(self, filename, cmpt=0, dtype=np.float64, fmt="%.8e"):
         """
         Save beta values, action, and errors (with/without RM and RF) to file.
@@ -772,6 +774,7 @@ class Annealer(object):
             np.save(filename, savearray.astype(dtype))
         else:
             np.savetxt(filename, savearray, fmt=fmt)
+        return savearray
 
     def save_as_minAone(self, savedir='', savefile=None):
         """
