@@ -17,6 +17,11 @@ VarAnneal requires you have the following software installed on your computer:
 2. Autograd (available via pip, tested on 1.3)  
 3. SciPy (tested on 1.7.1)
 
+VarAnneal can be installed from GitHub directly using ```pip```:
+```bash
+$ pip install git+https://github.com/agastya-rana/varanneal.git
+```
+
 ### Usage
 Taken from original VarAnneal algorithm:
 

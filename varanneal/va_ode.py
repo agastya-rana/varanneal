@@ -744,7 +744,6 @@ class Annealer(object):
             np.save(filename, savearray.astype(dtype))
         else:
             np.savetxt(filename, savearray, fmt=fmt)
-
         return savearray[-1]
 
     def save_action_errors(self, filename, cmpt=0, dtype=np.float64, fmt="%.8e"):
